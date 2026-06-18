@@ -87,7 +87,6 @@ const SEED_HISTORY = [
     eventType: "Sports Day",
     attendance: 250,
     timeOfDay: "Afternoon",
-    locationZone: "New York, USA",
     audienceNote: "Students and teachers competing",
     items: [
       { name: "Sandwich", planned: 300, actual: 185, perHead: 0.74, unitType: "individual", sizeValue: "1" },
@@ -101,7 +100,6 @@ const SEED_HISTORY = [
     eventType: "Parents Evening",
     attendance: 180,
     timeOfDay: "Evening",
-    locationZone: "Los Angeles, USA",
     audienceNote: "Parents and school staff",
     items: [
       { name: "Cheese and Crackers Platter", planned: 195, actual: 178, perHead: 0.99, unitType: "weight", sizeValue: "150" },
@@ -115,7 +113,6 @@ const SEED_HISTORY = [
     eventType: "Science Fair",
     attendance: 350,
     timeOfDay: "Morning",
-    locationZone: "San Francisco, USA",
     audienceNote: "Students, parents, and judges",
     items: [
       { name: "Bagel", planned: 400, actual: 280, perHead: 0.80, unitType: "individual", sizeValue: "1" },
@@ -129,7 +126,6 @@ const SEED_HISTORY = [
     eventType: "Debate Tournament",
     attendance: 120,
     timeOfDay: "Afternoon",
-    locationZone: "Boston, USA",
     audienceNote: "Students and debate coaches",
     items: [
       { name: "Sandwich", planned: 140, actual: 95, perHead: 0.79, unitType: "individual", sizeValue: "1" },
@@ -143,7 +139,6 @@ const SEED_HISTORY = [
     eventType: "Parents Evening",
     attendance: 200,
     timeOfDay: "Evening",
-    locationZone: "Chicago, USA",
     audienceNote: "Parents, teachers, and administrators",
     items: [
       { name: "Sandwich", planned: 240, actual: 180, perHead: 0.90, unitType: "individual", sizeValue: "1" },
@@ -157,7 +152,6 @@ const SEED_HISTORY = [
     eventType: "Sports Day",
     attendance: 280,
     timeOfDay: "Afternoon",
-    locationZone: "Dallas, USA",
     audienceNote: "Students, athletes, and spectators",
     items: [
       { name: "Hot Dog", planned: 320, actual: 275, perHead: 0.98, unitType: "individual", sizeValue: "1" },
@@ -171,7 +165,6 @@ const SEED_HISTORY = [
     eventType: "Science Fair",
     attendance: 400,
     timeOfDay: "Afternoon",
-    locationZone: "Austin, USA",
     audienceNote: "Students presenting and viewing projects",
     items: [
       { name: "Pizza Slice", planned: 500, actual: 380, perHead: 0.95, unitType: "individual", sizeValue: "1" },
@@ -185,7 +178,6 @@ const SEED_HISTORY = [
     eventType: "Debate Tournament",
     attendance: 150,
     timeOfDay: "Afternoon",
-    locationZone: "Cambridge, USA",
     audienceNote: "Competing debate teams from multiple schools",
     items: [
       { name: "Sandwich", planned: 180, actual: 135, perHead: 0.90, unitType: "individual", sizeValue: "1" },
@@ -199,7 +191,6 @@ const SEED_HISTORY = [
     eventType: "Parents Evening",
     attendance: 220,
     timeOfDay: "Evening",
-    locationZone: "Seattle, USA",
     audienceNote: "Parents, guardians, and teaching staff",
     items: [
       { name: "Sandwich", planned: 260, actual: 195, perHead: 0.89, unitType: "individual", sizeValue: "1" },
@@ -213,7 +204,6 @@ const SEED_HISTORY = [
     eventType: "Custom Event",
     attendance: 300,
     timeOfDay: "Lunch",
-    locationZone: "Miami, USA",
     audienceNote: "School community and families",
     items: [
       { name: "Pizza Slice", planned: 360, actual: 285, perHead: 0.95, unitType: "individual", sizeValue: "1" },
@@ -302,6 +292,15 @@ function runIntelligentLogisticsMatching(itemsArray, timeOfDaySelected) {
       routingNotes: diagnosticNotes
     };
   }).sort((a, b) => b.matchScore - a.matchScore);
+}
+
+function sanitizeEventRecord(eventRecord) {
+  const { locationZone, ...rest } = eventRecord;
+  return rest;
+}
+
+function sanitizeEventHistory(history) {
+  return history.map(sanitizeEventRecord);
 }
 
 // ─────────────────────────────────────────────
@@ -436,9 +435,9 @@ export default function App() {
   const [eventHistory, setEventHistory] = useState(() => {
     try {
       const stored = localStorage.getItem(LS_KEY);
-      return stored ? JSON.parse(stored) : SEED_HISTORY;
+      return stored ? sanitizeEventHistory(JSON.parse(stored)) : sanitizeEventHistory(SEED_HISTORY);
     } catch {
-      return SEED_HISTORY;
+      return sanitizeEventHistory(SEED_HISTORY);
     }
   });
 
@@ -465,7 +464,7 @@ export default function App() {
   useEffect(() => {
     const localSavedHistory = localStorage.getItem("campus_event_history");
     if (localSavedHistory) {
-      setEventHistory(JSON.parse(localSavedHistory));
+      setEventHistory(sanitizeEventHistory(JSON.parse(localSavedHistory)));
     }
   }, []);
 
@@ -537,7 +536,6 @@ export default function App() {
       eventType: formData.eventType,
       attendance: formData.attendance,
       timeOfDay: formData.timeOfDay,
-      // 🟢 UPDATED: Mapping your new personalized variables into the saved record
       attendeeAgeGroup: formData.attendeeAgeGroup,
       allergenAlerts: formData.allergenAlerts || [],
       items: formData.items.map((item) => {
@@ -1048,11 +1046,6 @@ export default function App() {
                     <span className="font-mono text-[10px] bg-zinc-900 text-white font-bold px-1.5 py-0.5 uppercase">
                       {evt.timeOfDay}
                     </span>
-                    {evt.locationZone && (
-                      <span className="font-mono text-[10px] border border-zinc-900 px-1.5 text-zinc-600">
-                        {evt.locationZone}
-                      </span>
-                    )}
                   </div>
                   
                   {/* Here is the new flex container holding the ID and the delete button together */}
