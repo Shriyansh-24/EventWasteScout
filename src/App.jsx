@@ -372,7 +372,7 @@ async function runLocalAnomalyDetection(formData, history) {
 }
 
 export default function App() {
-  const LS_KEY = "ewscout_history_v3";
+  const LS_KEY = "ewscout_history_v4";
 
   const [eventHistory, setEventHistory] = useState(() => {
     try {
