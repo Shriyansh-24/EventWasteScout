@@ -732,12 +732,6 @@ export default function App() {
                         </div>
                       </div>
                       <div className="bg-[#004D4B] rounded-2xl p-4 border border-[#003B39]">
-                        <span className="text-[10px] font-bold text-[#A3D3C9] uppercase tracking-wider block">Lifecycle Water Loss</span>
-                        <div className="text-2xl font-black mt-1 font-mono text-white">
-                          {auditResult.impactMetrics?.waterWasteL || 0} <span className="text-xs font-sans text-[#A3D3C9] font-normal">L</span>
-                        </div>
-                      </div>
-                      <div className="bg-[#004D4B] rounded-2xl p-4 border border-[#003B39]">
                         <span className="text-[10px] font-bold text-[#A3D3C9] uppercase tracking-wider block">Nutritional Capacity</span>
                         <div className="text-2xl font-black mt-1 font-mono text-white">
                           {auditResult.impactMetrics?.hungryPeopleFed || 0} <span className="text-xs font-sans text-[#A3D3C9] font-normal">MEALS</span>
