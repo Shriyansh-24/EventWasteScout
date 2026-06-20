@@ -1,28 +1,27 @@
 import { useState, useEffect, useRef } from "react";
 
 // ─────────────────────────────────────────────
-// DATA CONSTANTS & UNIT CONVERSIONS (Problem 5 & Units Fix)
+// DATA CONSTANTS & UNIT CONVERSIONS (TGTG Look)
 // ─────────────────────────────────────────────
 const UNIT_TYPES = {
-  individual: "Individual (pcs)",
-  volume: "Volume (Liquids)",
-  weight: "Weight (Solid Foods)",
+  individual: "Individual Pieces",
+  volume: "Liquids / Volumes",
+  weight: "Solid Foods / Weight",
 };
 
 const VOLUME_SIZES = [
-  { label: "250ml Cup/Box", value: 250 },
-  { label: "500ml Bottle", value: 500 },
-  { label: "1L Carton/Bottle", value: 1000 },
-  { label: "1.5L Large Bottle", value: 1500 },
+  { label: "Small Cup/Box (250ml)", value: 250 },
+  { label: "Medium Bottle (500ml)", value: 500 },
+  { label: "Large Carton (1L)", value: 1000 },
+  { label: "Bulk Bottle (1.5L)", value: 1500 },
 ];
 
 const WEIGHT_SIZES = [
-  { label: "Per Portion (~150g)", value: 150 },
-  { label: "Per Kilogram (1000g)", value: 1000 },
-  { label: "Per Large Tray (~2000g)", value: 2000 },
+  { label: "Single Portion (~150g)", value: 150 },
+  { label: "Standard Kilo Pack (1kg)", value: 1000 },
+  { label: "Large Buffet Tray (2kg)", value: 2000 },
 ];
 
-// Reference conversion map to quickly parse items to metrics
 const ITEM_PROFILE_DEFAULTS = {
   sandwich: { type: "individual", size: 1, weightGrams: 200, virtualWaterLiters: 200 },
   muffins: { type: "individual", size: 1, weightGrams: 120, virtualWaterLiters: 90 },
@@ -38,8 +37,8 @@ const ITEM_PROFILE_DEFAULTS = {
   "tea/coffee": { type: "volume", size: 250, weightGrams: 250, virtualWaterLiters: 120 },
   "date trays": { type: "weight", size: 2000, weightGrams: 2000, virtualWaterLiters: 800 },
   "chips bags": { type: "individual", size: 1, weightGrams: 50, virtualWaterLiters: 40 },
-  biscuits: { type: "individual", size: 1, weightGrams: 25, virtualWaterLiters: 20 },
-  pastries: { type: "individual", size: 1, weightGrams: 80, virtualWaterLiters: 65 },
+  biscuits: { type: "individual", size: 25, weightGrams: 25, virtualWaterLiters: 20 },
+  pastries: { type: "individual", size: 80, weightGrams: 80, virtualWaterLiters: 65 },
   "fruit cups": { type: "weight", size: 150, weightGrams: 150, virtualWaterLiters: 50 },
   "energy bars": { type: "individual", size: 1, weightGrams: 60, virtualWaterLiters: 45 },
 };
@@ -63,36 +62,32 @@ function getItemMetrics(name, qty, unitType, sizeValue) {
   } else if (finalType === "volume") {
     const mlMultiplier = parseInt(sizeValue, 10) || defaultProfile.size || 250;
     const totalMl = qty * mlMultiplier;
-    finalWeightGrams = totalMl; // 1ml water base ~ 1g
-    finalWaterLiters = totalMl / 1000 + (totalMl * 0.2); // Liquid Vol + embedded lifecycle
+    finalWeightGrams = totalMl;
+    finalWaterLiters = totalMl / 1000 + (totalMl * 0.2);
   } else if (finalType === "weight") {
     const gramMultiplier = parseInt(sizeValue, 10) || defaultProfile.size || 150;
     finalWeightGrams = qty * gramMultiplier;
-    finalWaterLiters = (finalWeightGrams / 1000) * 400; // Average embedded water factor
+    finalWaterLiters = (finalWeightGrams / 1000) * 400;
   }
 
   return {
     weightKg: +(finalWeightGrams / 1000).toFixed(2),
     waterLiters: +finalWaterLiters.toFixed(1),
-    peopleFed: Math.max(0, Math.floor(finalWeightGrams / 400)), // 400g makes a meal ration
+    peopleFed: Math.max(0, Math.floor(finalWeightGrams / 400)),
   };
 }
 
-// ─────────────────────────────────────────────
-// SCHOOL EVENTS DATASET (Sports Day, Science Fair, Parents Evening, Debate Tournament, Custom Events)
-// ─────────────────────────────────────────────
 const SEED_HISTORY = [
   {
     id: "evt-001",
     eventType: "Sports Day",
     attendance: 250,
     timeOfDay: "Afternoon",
-    audienceNote: "Students and teachers competing",
+    attendeeAgeGroup: "teens",
+    allergenAlerts: [],
     items: [
-      { name: "Sandwich", planned: 300, actual: 185, perHead: 0.74, unitType: "individual", sizeValue: "1" },
-      { name: "Water", planned: 320, actual: 280, perHead: 1.12, unitType: "volume", sizeValue: "500" },
-      { name: "Granola Bars", planned: 250, actual: 140, perHead: 0.56, unitType: "individual", sizeValue: "1" },
-      { name: "Orange Slices", planned: 200, actual: 155, perHead: 0.62, unitType: "weight", sizeValue: "150" },
+      { name: "Sandwich", planned: 300, actual: 285, perHead: 1.14, unitType: "individual", sizeValue: "1" },
+      { name: "Water Bottles", planned: 400, actual: 380, perHead: 1.52, unitType: "volume", sizeValue: "500" },
     ],
   },
   {
@@ -100,190 +95,69 @@ const SEED_HISTORY = [
     eventType: "Parents Evening",
     attendance: 180,
     timeOfDay: "Evening",
-    audienceNote: "Parents and school staff",
+    attendeeAgeGroup: "adults",
+    allergenAlerts: ["Dairy"],
     items: [
-      { name: "Cheese and Crackers Platter", planned: 195, actual: 178, perHead: 0.99, unitType: "weight", sizeValue: "150" },
-      { name: "Hot Chocolate Cup", planned: 220, actual: 185, perHead: 1.03, unitType: "volume", sizeValue: "250" },
-      { name: "Cookie", planned: 180, actual: 165, perHead: 0.92, unitType: "individual", sizeValue: "1" },
-      { name: "Apple Juice", planned: 160, actual: 148, perHead: 0.82, unitType: "volume", sizeValue: "250" },
+      { name: "Pastries", planned: 250, actual: 140, perHead: 0.77, unitType: "individual", sizeValue: "1" },
+      { name: "Coffee Cups", planned: 220, actual: 165, perHead: 0.91, unitType: "volume", sizeValue: "250" },
     ],
-  },
-  {
-    id: "evt-003",
-    eventType: "Science Fair",
-    attendance: 350,
-    timeOfDay: "Morning",
-    audienceNote: "Students, parents, and judges",
-    items: [
-      { name: "Bagel", planned: 400, actual: 280, perHead: 0.80, unitType: "individual", sizeValue: "1" },
-      { name: "Orange Juice", planned: 420, actual: 340, perHead: 0.97, unitType: "volume", sizeValue: "250" },
-      { name: "Muffin", planned: 350, actual: 210, perHead: 0.60, unitType: "individual", sizeValue: "1" },
-      { name: "Fruit Cup", planned: 300, actual: 210, perHead: 0.60, unitType: "weight", sizeValue: "150" },
-    ],
-  },
-  {
-    id: "evt-004",
-    eventType: "Debate Tournament",
-    attendance: 120,
-    timeOfDay: "Afternoon",
-    audienceNote: "Students and debate coaches",
-    items: [
-      { name: "Sandwich", planned: 140, actual: 95, perHead: 0.79, unitType: "individual", sizeValue: "1" },
-      { name: "Water Bottle", planned: 150, actual: 135, perHead: 1.13, unitType: "volume", sizeValue: "500" },
-      { name: "Energy Bar", planned: 120, actual: 90, perHead: 0.75, unitType: "individual", sizeValue: "1" },
-      { name: "Banana Slice", planned: 100, actual: 75, perHead: 0.63, unitType: "weight", sizeValue: "150" },
-    ],
-  },
-  {
-    id: "evt-005",
-    eventType: "Parents Evening",
-    attendance: 200,
-    timeOfDay: "Evening",
-    audienceNote: "Parents, teachers, and administrators",
-    items: [
-      { name: "Sandwich", planned: 240, actual: 180, perHead: 0.90, unitType: "individual", sizeValue: "1" },
-      { name: "Coffee Service", planned: 250, actual: 225, perHead: 1.13, unitType: "volume", sizeValue: "250" },
-      { name: "Pastries", planned: 200, actual: 160, perHead: 0.80, unitType: "individual", sizeValue: "1" },
-      { name: "Vegetable Tray", planned: 15, actual: 10, perHead: 0.05, unitType: "weight", sizeValue: "2000" },
-    ],
-  },
-  {
-    id: "evt-006",
-    eventType: "Sports Day",
-    attendance: 280,
-    timeOfDay: "Afternoon",
-    audienceNote: "Students, athletes, and spectators",
-    items: [
-      { name: "Hot Dog", planned: 320, actual: 275, perHead: 0.98, unitType: "individual", sizeValue: "1" },
-      { name: "Lemonade Cup", planned: 350, actual: 310, perHead: 1.11, unitType: "volume", sizeValue: "250" },
-      { name: "Potato Chip Bag", planned: 280, actual: 195, perHead: 0.70, unitType: "individual", sizeValue: "1" },
-      { name: "Watermelon Slice", planned: 25, actual: 18, perHead: 0.06, unitType: "weight", sizeValue: "2000" },
-    ],
-  },
-  {
-    id: "evt-007",
-    eventType: "Science Fair",
-    attendance: 400,
-    timeOfDay: "Afternoon",
-    audienceNote: "Students presenting and viewing projects",
-    items: [
-      { name: "Pizza Slice", planned: 500, actual: 380, perHead: 0.95, unitType: "individual", sizeValue: "1" },
-      { name: "Sprite and 7-Up", planned: 480, actual: 400, perHead: 1.0, unitType: "volume", sizeValue: "250" },
-      { name: "Brownie", planned: 400, actual: 310, perHead: 0.78, unitType: "individual", sizeValue: "1" },
-      { name: "Popcorn Bag", planned: 20, actual: 15, perHead: 0.04, unitType: "weight", sizeValue: "2000" },
-    ],
-  },
-  {
-    id: "evt-008",
-    eventType: "Debate Tournament",
-    attendance: 150,
-    timeOfDay: "Afternoon",
-    audienceNote: "Competing debate teams from multiple schools",
-    items: [
-      { name: "Sandwich", planned: 180, actual: 135, perHead: 0.90, unitType: "individual", sizeValue: "1" },
-      { name: "Water Bottle", planned: 200, actual: 175, perHead: 1.17, unitType: "volume", sizeValue: "500" },
-      { name: "Mixed Fruit", planned: 150, actual: 105, perHead: 0.70, unitType: "weight", sizeValue: "150" },
-      { name: "Granola Bar", planned: 130, actual: 100, perHead: 0.67, unitType: "individual", sizeValue: "1" },
-    ],
-  },
-  {
-    id: "evt-009",
-    eventType: "Parents Evening",
-    attendance: 220,
-    timeOfDay: "Evening",
-    audienceNote: "Parents, guardians, and teaching staff",
-    items: [
-      { name: "Sandwich", planned: 260, actual: 195, perHead: 0.89, unitType: "individual", sizeValue: "1" },
-      { name: "Coffee and Tea Service", planned: 280, actual: 245, perHead: 1.11, unitType: "volume", sizeValue: "250" },
-      { name: "Brownies", planned: 220, actual: 170, perHead: 0.77, unitType: "individual", sizeValue: "1" },
-      { name: "Cheese", planned: 12, actual: 8, perHead: 0.04, unitType: "weight", sizeValue: "2000" },
-    ],
-  },
-  {
-    id: "evt-010",
-    eventType: "Custom Event",
-    attendance: 300,
-    timeOfDay: "Lunch",
-    audienceNote: "School community and families",
-    items: [
-      { name: "Pizza Slice", planned: 360, actual: 285, perHead: 0.95, unitType: "individual", sizeValue: "1" },
-      { name: "Bottled Water and Juice", planned: 400, actual: 330, perHead: 1.10, unitType: "volume", sizeValue: "250" },
-      { name: "Cupcake", planned: 320, actual: 255, perHead: 0.85, unitType: "individual", sizeValue: "1" },
-      { name: "Fruit and Veggie Platter", planned: 20, actual: 14, perHead: 0.05, unitType: "weight", sizeValue: "2000" },
-    ],
-  },
-];
-
-// ─────────────────────────────────────────────
-// LOCAL SUPPORT ROUTING REFERENCE DATA
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────────────────────
-// HYPER-LOCAL RECOVERY REGISTRY & METABOLIC AGE-SCALING ENGINE
-// Replaces static country filters with custom behavioral matching logic
-// ─────────────────────────────────────────────────────────────
-
-// 1. Consumption multipliers based on your insight that teens eat more than children/adults
-const AGE_CONSUMPTION_MULTIPLIERS = {
-  primary: 0.65,      // High physical plate waste, small individual capacity
-  teens: 1.35,        // Peak metabolic demand, athletic consumption curve
-  adults: 1.00,       // Standard baseline consumption benchmark
-  mixed: 1.10         // Blended distribution model for community events
-};
-
-// 2. Local operational registry for recovery networks in Qatar
-const CAMPUS_CHARITY_REGISTRY = [
-  {
-    name: "Hifz Al Naema Food Bank",
-    desk: "Doha Central HQ / Industrial Area Logistics Hub",
-    contact: "+974 4435 5555",
-    acceptedTypes: ["perishable", "shelf-stable"],
-    operatingHours: ["Lunch", "Afternoon", "Evening"],
-    description: "Qatar's premier surplus food recovery network. Specializes in rapid cold-chain deployment to reclaim unserved buffet catering and hot meals directly from campus functions."
-  },
-  {
-    name: "Qatar Charity (Tayf Program)",
-    desk: "Doha Community Collection Network",
-    contact: "+974 4466 7711",
-    acceptedTypes: ["shelf-stable"],
-    operatingHours: ["Morning", "Lunch", "Afternoon"],
-    description: "Dedicated infrastructure focusing heavily on packaged, non-perishable goods. Best optimized for sealed juice boxes, dry snacks, and canned items remaining after day fairs."
-  },
-  {
-    name: "Eid Charity Food Bank",
-    desk: "Al Markhiya Regional Hub Terminal",
-    contact: "+974 4040 5555",
-    acceptedTypes: ["perishable", "shelf-stable"],
-    operatingHours: ["Lunch", "Afternoon"],
-    description: "Processes packaged individual portions, meals, sandwiches, and bakery surplus. Excellent for shifting food into local neighborhoods before late afternoon distribution windows close."
   }
 ];
 
-function runIntelligentLogisticsMatching(itemsArray, timeOfDaySelected) {
+const AGE_CONSUMPTION_MULTIPLIERS = {
+  primary: 0.65,
+  teens: 1.35,
+  adults: 1.00,
+  mixed: 1.10
+};
+
+const CAMPUS_CHARITY_REGISTRY = [
+  {
+    name: "Hifz Al Naema Food Bank",
+    desk: "Doha Logistics Hub",
+    contact: "+974 4435 5555",
+    acceptedTypes: ["perishable", "shelf-stable"],
+    operatingHours: ["Lunch", "Afternoon", "Evening"],
+    description: "Reclaims unserved buffet catering and hot meals directly via rapid cold-chain deployment."
+  },
+  {
+    name: "Qatar Charity (Tayf Program)",
+    desk: "Community Distribution Network",
+    contact: "+974 4466 7711",
+    acceptedTypes: ["shelf-stable"],
+    operatingHours: ["Morning", "Lunch", "Afternoon"],
+    description: "Dedicated distribution network optimized for sealed boxes, dry snacks, and non-perishables."
+  }
+];
+
+function runIntelligentLogisticsMatching(itemsArray, timeOfDaySelected, allergenAlerts) {
   const hasPerishables = itemsArray.some(item => {
     const name = item.name.toLowerCase();
     return name.includes("sandwich") || name.includes("samosa") || name.includes("pizza") || 
-           name.includes("pastry") || name.includes("fruit") || name.includes("chicken");
+           name.includes("pastry") || name.includes("muffin");
   });
 
   return CAMPUS_CHARITY_REGISTRY.map(charity => {
     let matchScore = 100;
     const diagnosticNotes = [];
 
-    // Temporal Synchronization Check
     if (!charity.operatingHours.includes(timeOfDaySelected)) {
       matchScore -= 40;
-      diagnosticNotes.push(`⚠️ Timing Alert: Your event concludes in the "${timeOfDaySelected}", but this hub's active distribution windows lean toward alternative day shifts.`);
+      diagnosticNotes.push(`🕒 Hub inactive during "${timeOfDaySelected}" window.`);
     } else {
-      diagnosticNotes.push(`✅ Temporal Sync: Intake desk is active during your "${timeOfDaySelected}" cleanup window.`);
+      diagnosticNotes.push(`⚡ Node active for "${timeOfDaySelected}" collection.`);
     }
 
-    // Asset Perishability Check
     if (hasPerishables && !charity.acceptedTypes.includes("perishable")) {
       matchScore -= 50;
-      diagnosticNotes.push("❌ Asset Mismatch: Your surplus contains fresh cooked perishables, but this node exclusively accepts sealed dry packaging.");
+      diagnosticNotes.push("❌ Node leaves unsealed fresh items.");
     } else if (hasPerishables) {
-      diagnosticNotes.push("✅ Cold-Chain Compliant: Equipped with active refrigeration controls to accept fresh entries.");
+      diagnosticNotes.push("❄️ Certified cold-chain transport ready.");
+    }
+
+    if (allergenAlerts && allergenAlerts.length > 0) {
+      matchScore -= 15;
+      diagnosticNotes.push(`⚠️ Contains allergens: (${allergenAlerts.join(", ")}).`);
     }
 
     return {
@@ -294,27 +168,10 @@ function runIntelligentLogisticsMatching(itemsArray, timeOfDaySelected) {
   }).sort((a, b) => b.matchScore - a.matchScore);
 }
 
-function sanitizeEventRecord(eventRecord) {
-  const { locationZone, ...rest } = eventRecord;
-  return rest;
-}
-
-function sanitizeEventHistory(history) {
-  return history.map(sanitizeEventRecord);
-}
-
-// ─────────────────────────────────────────────
-// LOCAL ENGINE WITH DETERMINISTIC CONTEXT BRANCHING
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────
-// LOCAL ENGINE WITH DETERMINISTIC AGE-SCALING CONTEXT BRANCHING
-// ─────────────────────────────────────────────────────────────
 async function runLocalAnomalyDetection(formData, history) {
-  // Destructure your new fields: attendeeAgeGroup and allergenAlerts
   const { eventType, attendance, timeOfDay, items, attendeeAgeGroup, allergenAlerts } = formData;
-
   const relevantHistory = history.filter((e) => e.eventType === eventType);
-  const pool = relevantHistory.length >= 2 ? relevantHistory : history;
+  const pool = relevantHistory.length >= 1 ? relevantHistory : history;
 
   const ratioMap = {};
   const ratioCount = {};
@@ -329,7 +186,7 @@ async function runLocalAnomalyDetection(formData, history) {
     ratioMap[k] = ratioMap[k] / ratioCount[k];
   });
 
-  const DEFAULT_RATIO = 0.65;
+  const DEFAULT_RATIO = 0.75;
   const anomaliesDetected = [];
   const recommendedQuantities = [];
   
@@ -337,17 +194,14 @@ async function runLocalAnomalyDetection(formData, history) {
   let globalSurplusWaterLiters = 0;
   let globalPeopleFed = 0;
 
-  // Extract metabolic scaling coefficient based on your new input rules
   const ageMultiplier = AGE_CONSUMPTION_MULTIPLIERS[attendeeAgeGroup] || 1.00;
 
   items.forEach((item) => {
     const key = item.name.toLowerCase().trim();
-    // 1. Core Baseline Ratio pulled from historical databases
-    const rawBaseline = ratioMap[key] ?? DEFAULT_RATIO;
-    // 2. Adjust baseline based on age groups (e.g., teens consume more physical mass)
-    const baseline = rawBaseline * ageMultiplier;
-
-    const suggestedQty = Math.max(1, Math.round(baseline * attendance));
+    const baselineBase = ratioMap[key] ?? DEFAULT_RATIO;
+    const calibratedBaseline = baselineBase * ageMultiplier;
+    
+    const suggestedQty = Math.max(1, Math.round(calibratedBaseline * attendance));
     const plannedQty = parseInt(item.qty, 10) || 0;
     const deviation = plannedQty > 0 ? ((plannedQty - suggestedQty) / suggestedQty) * 100 : 0;
 
@@ -359,7 +213,7 @@ async function runLocalAnomalyDetection(formData, history) {
       anomaliesDetected.push({
         item: item.name,
         percentageOver: Math.round(deviation),
-        reason: `Historical allocation estimates ${rawBaseline.toFixed(2)} units/head. Adjusted by ×${ageMultiplier} for "${attendeeAgeGroup}" profile. Your entry deviates by +${Math.round(deviation)}%.`,
+        reason: `Baseline calculates ${calibratedBaseline.toFixed(2)} units/head. Current order deviates by +${Math.round(deviation)}%.`,
       });
 
       const surplusQty = plannedQty - suggestedQty;
@@ -373,7 +227,7 @@ async function runLocalAnomalyDetection(formData, history) {
       item: item.name,
       plannedQty,
       suggestedQty,
-      baselineUsed: baseline.toFixed(2),
+      baselineUsed: calibratedBaseline.toFixed(2),
       status,
       unitType: item.unitType,
       sizeValue: item.sizeValue,
@@ -381,46 +235,28 @@ async function runLocalAnomalyDetection(formData, history) {
   });
 
   const isHighVolume = globalSurplusWeightKg > 15;
-  
-  // Call the intelligent registry system matching engine
-  const targetSupport = runIntelligentLogisticsMatching(items, timeOfDay);
-  
+  const logisticsMatching = runIntelligentLogisticsMatching(items, timeOfDay, allergenAlerts);
   const contingencyPlan = [];
 
-  contingencyPlan.push(`[PRE-EVENT RE-CALIBRATION] Readjust supplier invoice targets directly to ${recommendedQuantities.map(r => `${r.suggestedQty}x ${r.item}`).join(", ")}.`);
-
-  // Append safety allergen warning card to contingency array if checked
-  if (allergenAlerts && allergenAlerts.length > 0) {
-    contingencyPlan.push(`[⚠️ SAFETY GUARDRAIL] Logistics flagged with allergen groups: (${allergenAlerts.join(", ")}). Mark freight containers before handling dispatch cycles.`);
-  }
+  contingencyPlan.push(`[Procurement] Calibrate original baseline targets down directly to recommended quantities.`);
 
   if (timeOfDay === "Morning" || timeOfDay === "Lunch") {
     if (isHighVolume) {
-      contingencyPlan.push(`[IMMEDIATE TRANSIT] Divert leftovers immediately at closure to the Student Recreation Common Area for open buffet service during general high-school breaks.`);
-      contingencyPlan.push(`[LOCAL LOGISTICS] Coordinate dispatch to ${targetSupport[0].name} (${targetSupport[0].contact}) for their midday lunch run distribution window.`);
+      contingencyPlan.push(`[Transit] Forward remaining portions immediately to the Student Lounge Hub for open access distribution.`);
     } else {
-      contingencyPlan.push(`[FACILITY HOUSING] Cache remaining items inside the primary ground-floor staff kitchenette lounge for general staff consumption during administrative periods.`);
+      contingencyPlan.push(`[Storage] Hold inventory items inside department breakrooms for afternoon availability.`);
     }
   } else if (timeOfDay === "Afternoon") {
-    contingencyPlan.push(`[ATHLETIC REDISTRIBUTION] Deliver leftovers directly to the athletic locker complex coordinators for late-stay track and field students or sports training teams.`);
-    if (isHighVolume) {
-      contingencyPlan.push(`[LOCAL SUPPORT ROUTING] Issue secondary alert notice to ${targetSupport[0].name} for standard afternoon service pickup.`);
-    }
+    contingencyPlan.push(`[Redistribution] Redirect fresh unserved tracking units directly to school athletic locker rooms for sports training students.`);
   } else { 
-    if (isHighVolume) {
-      contingencyPlan.push(`[CRITICAL OVERNIGHT PARADIGM] Campus cold facilities cannot hold bulk volume. Engage emergency dispatch to ${targetSupport.map(c => `${c.name} [${c.contact}]`).join(" OR ")} before late closure gates drop.`);
-    } else {
-      contingencyPlan.push(`[NIGHT SERVICE SUPPORT] Route the items to the facilities maintenance break control room to support overnight logistical shifts and campus safety personnel.`);
-    }
+    contingencyPlan.push(`[Recovery] Secure remaining parcels and prioritize dispatch straight to ${logisticsMatching[0].name} before gate closures.`);
   }
-  
-  contingencyPlan.push(`[DATA CALIBRATION LOOP] Access the interface dashboard tool tomorrow morning to record verified item usage numbers into local disk persistence storage.`);
 
   return {
     anomaliesDetected,
     recommendedQuantities,
     contingencyPlan,
-    targetSupport,
+    logisticsMatching,
     impactMetrics: {
       foodWasteKg: +globalSurplusWeightKg.toFixed(1),
       waterWasteL: +globalSurplusWaterLiters.toFixed(1),
@@ -430,26 +266,23 @@ async function runLocalAnomalyDetection(formData, history) {
 }
 
 export default function App() {
-  const LS_KEY = "ewscout_history_v2";
+  const LS_KEY = "ewscout_history_v3";
 
   const [eventHistory, setEventHistory] = useState(() => {
     try {
       const stored = localStorage.getItem(LS_KEY);
-      return stored ? sanitizeEventHistory(JSON.parse(stored)) : sanitizeEventHistory(SEED_HISTORY);
+      return stored ? JSON.parse(stored) : SEED_HISTORY;
     } catch {
-      return sanitizeEventHistory(SEED_HISTORY);
+      return SEED_HISTORY;
     }
   });
 
-  const [showThinkingPanel, setShowThinkingPanel] = useState(false);
-
-// Look for your old "form" state variable configuration and replace it with this:
   const [form, setForm] = useState({
     eventType: "Parents Evening",
     attendance: "",
     timeOfDay: "Evening",
-    attendeeAgeGroup: "adults", // Default choice index
-    allergenAlerts: [],         // Array tracking your new safety checkboxes
+    attendeeAgeGroup: "adults",
+    allergenAlerts: [],
     items: [{ id: Date.now(), name: "", qty: "", unitType: "individual", sizeValue: "1" }],
   });
 
@@ -462,13 +295,18 @@ export default function App() {
   const resultsRef = useRef(null);
 
   useEffect(() => {
-    const localSavedHistory = localStorage.getItem("campus_event_history");
-    if (localSavedHistory) {
-      setEventHistory(sanitizeEventHistory(JSON.parse(localSavedHistory)));
-    }
-  }, []);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(eventHistory));
+    } catch {}
+  }, [eventHistory]);
 
   const updateField = (field, value) => setForm((f) => ({ ...f, [field]: value }));
+  const toggleAllergen = (allergen) => setForm((f) => {
+    const active = f.allergenAlerts.includes(allergen)
+      ? f.allergenAlerts.filter(a => a !== allergen)
+      : [...f.allergenAlerts, allergen];
+    return { ...f, allergenAlerts: active };
+  });
 
   const updateItem = (id, field, value) =>
     setForm((f) => ({
@@ -492,45 +330,29 @@ export default function App() {
 
     const validItems = form.items.filter((i) => i.name.trim() && i.qty);
     if (!form.attendance || validItems.length === 0) {
-      setError("Please clarify target attendance and record item fields.");
+      setError("Please specify attendance headcount and input your menu items.");
       return;
     }
 
     setLoading(true);
+    const formData = { ...form, attendance: parseInt(form.attendance, 10), items: validItems };
 
-    // Update this data map object right here:
-    const formData = {
-      eventType: form.eventType,
-      attendance: parseInt(form.attendance, 10),
-      timeOfDay: form.timeOfDay,
-      attendeeAgeGroup: form.attendeeAgeGroup, // Passed down cleanly
-      allergenAlerts: form.allergenAlerts,     // Passed down cleanly
-      items: validItems,
-    };
-
-    // Local processing calculation execution
-    await new Promise((r) => setTimeout(r, 700));
+    await new Promise((r) => setTimeout(r, 600));
     const localCalculations = await runLocalAnomalyDetection(formData, eventHistory);
-    setAuditResult({ ...localCalculations, formData, source: "local", rawThinking: `Deterministic Rule-based engine executed. Adjusted parameters for ${form.attendeeAgeGroup} profile multiplier models.` });
+    setAuditResult({ ...localCalculations, formData, source: "local" });
     setLoading(false);
     setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   };
 
-  // ─────────────────────────────────────────────
-  // TELEMETRY REGISTRY DELETE HANDLER
-  // ─────────────────────────────────────────────
   const handleDeleteEvent = (idToDelete) => {
-    // Confirm via native browser window to prevent accidental drops
-    if (window.confirm("CONFIRM ACTION: REMOVE THIS OPERATIONAL NODE REGISTER FROM STORAGE?")) {
-      const updatedHistory = eventHistory.filter((evt) => evt.id !== idToDelete);
-      setEventHistory(updatedHistory);
+    if (window.confirm("Remove this entry from history?")) {
+      setEventHistory(eventHistory.filter((evt) => evt.id !== idToDelete));
     }
   };
 
   const handleSaveActuals = () => {
     if (!auditResult) return;
     const { formData } = auditResult;
-    
     const newRecord = {
       id: `evt-${Date.now()}`,
       eventType: formData.eventType,
@@ -550,72 +372,68 @@ export default function App() {
         };
       }),
     };
-
-    // 🟢 COMMIT TO REACT STATE:
-    const updatedHistory = [newRecord, ...eventHistory];
-    setEventHistory(updatedHistory);
-
-    // 🟢 COMMIT TO BROWSER STORAGE:
-    localStorage.setItem("campus_event_history", JSON.stringify(updatedHistory));
-
-    // Reset layout UI states
-    setLogActuals({});
-    setAuditResult(null);
+    setEventHistory([newRecord, ...eventHistory]);
     setSaved(true);
   };
 
   return (
-    <div className="min-h-screen bg-white text-zinc-900 font-sans antialiased border-8 border-zinc-900">
+    // TGTG Brand Palette Styling Rules Applied Across Main Tree
+    <div className="min-h-screen bg-[#F9F3F0] text-[#103B39] font-sans antialiased selection:bg-[#00615F] selection:text-white">
       
-      <header className="border-b border-zinc-900 px-6 py-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
-        <div>
-          <h1 className="text-3xl font-black uppercase tracking-tight text-zinc-900 mt-2">
-            EVENTWASTE SCOUT
-          </h1>
-          <p className="font-mono text-xs text-zinc-500 uppercase tracking-tight mt-0.5">
-            Event Food Waste Optimization Matrix
-          </p>
+      {/* BRAND HEADER */}
+      <header className="sticky top-0 z-50 bg-[#00615F] text-white shadow-md px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          {/* TGTG Inspired Circle Logo Badge */}
+          <div className="w-9 h-9 bg-[#E68A73] rounded-full flex items-center justify-center font-black tracking-tighter text-white shadow-sm text-sm">🌱</div>
+          <div>
+            <h1 className="text-xl font-extrabold tracking-tight">Too Good To Waste</h1>
+            <p className="text-[10px] font-mono text-[#A3D3C9] uppercase tracking-widest -mt-0.5">EventWaste Scout // Intelligence</p>
+          </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="font-mono text-xs uppercase tracking-wider border border-zinc-900 bg-white px-3 py-2 font-bold">
-            ◎ Engine: Local
-          </div>
-
-          <div className="flex bg-zinc-100 border border-zinc-900 p-0.5">
-            {["audit", "history"].map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveTab(t)}
-                className={`font-mono text-xs uppercase tracking-wider px-4 py-1.5 transition-all ${
-                  activeTab === t ? "bg-zinc-900 text-white font-bold" : "text-zinc-600 hover:text-zinc-900"
-                }`}
-              >
-                {t === "audit" ? "Audit Console" : `Registry Database [${eventHistory.length}]`}
-              </button>
-            ))}
-          </div>
+        {/* TAB CONTROL BUTTONS */}
+        <div className="flex bg-[#004D4A] p-1 rounded-full border border-[#104E4B]">
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={`text-xs font-bold px-5 py-2 rounded-full transition-all ${
+              activeTab === "audit" ? "bg-[#E68A73] text-white shadow-sm" : "text-[#A3D3C9] hover:text-white"
+            }`}
+          >
+            Audit Workspace
+          </button>
+          <button
+            onClick={() => setActiveTab("history")}
+            className={`text-xs font-bold px-5 py-2 rounded-full transition-all flex items-center gap-2 ${
+              activeTab === "history" ? "bg-[#E68A73] text-white shadow-sm" : "text-[#A3D3C9] hover:text-white"
+            }`}
+          >
+            Saved History 
+            <span className="bg-[#003634] text-[#A3D3C9] font-mono text-[10px] px-2 py-0.5 rounded-full">
+              {eventHistory.length}
+            </span>
+          </button>
         </div>
       </header>
 
-      
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      {/* DASHBOARD GRID CONTAINER */}
+      <main className="max-w-6xl mx-auto px-4 py-8">
         {activeTab === "audit" && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
             
-            
-            <div className="lg:col-span-5 space-y-6">
-              <div className="border-l-4 border-zinc-900 pl-4 py-1">
-                <h2 className="text-xl font-bold uppercase tracking-tight">Food Waste Radar</h2>
+            {/* INPUT WORKSPACE (LEFT COLUMN) */}
+            <div className="lg:col-span-5 bg-white rounded-3xl p-6 shadow-sm border border-[#EBE3DE] space-y-5">
+              <div>
+                <h2 className="text-lg font-black tracking-tight text-[#00615F] uppercase">Event Scope Matrix</h2>
+                <p className="text-xs text-zinc-500 mt-0.5">Calibrate historical parameters below</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="font-mono text-xs uppercase tracking-wider text-zinc-500 block mb-1">Event Type / Class</label>
+                  <label className="text-xs font-bold tracking-wide text-zinc-600 block mb-1.5">Function Category</label>
                   <select
                     value={form.eventType}
                     onChange={(e) => updateField("eventType", e.target.value)}
-                    className="w-full bg-white border-2 border-zinc-900 p-3 text-sm font-medium focus:outline-none focus:bg-zinc-50"
+                    className="w-full bg-[#F9F3F0] border-0 rounded-2xl p-3 text-sm font-semibold text-[#103B39] focus:ring-2 focus:ring-[#00615F]"
                   >
                     {["Sports Day", "Science Fair", "Parents Evening", "Debate Tournament", "Custom Event"].map((v) => (
                       <option key={v}>{v}</option>
@@ -625,22 +443,22 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="font-mono text-xs uppercase tracking-wider text-zinc-500 block mb-1">Target Personnel Headcount</label>
+                    <label className="text-xs font-bold tracking-wide text-zinc-600 block mb-1.5">Expected Guests</label>
                     <input
                       type="number"
                       min="1"
                       value={form.attendance}
                       onChange={(e) => updateField("attendance", e.target.value)}
-                      placeholder="e.g. 150"
-                      className="w-full bg-white border-2 border-zinc-900 p-3 text-sm font-mono focus:outline-none"
+                      placeholder="Headcount"
+                      className="w-full bg-[#F9F3F0] border-0 rounded-2xl p-3 text-sm font-mono text-[#103B39] placeholder-zinc-400 focus:ring-2 focus:ring-[#00615F]"
                     />
                   </div>
                   <div>
-                    <label className="font-mono text-xs uppercase tracking-wider text-zinc-500 block mb-1">Time Window</label>
+                    <label className="text-xs font-bold tracking-wide text-zinc-600 block mb-1.5">Time Schedule</label>
                     <select
                       value={form.timeOfDay}
                       onChange={(e) => updateField("timeOfDay", e.target.value)}
-                      className="w-full bg-white border-2 border-zinc-900 p-3 text-sm focus:outline-none focus:bg-zinc-50"
+                      className="w-full bg-[#F9F3F0] border-0 rounded-2xl p-3 text-sm font-semibold text-[#103B39] focus:ring-2 focus:ring-[#00615F]"
                     >
                       {["Morning", "Lunch", "Afternoon", "Evening"].map((v) => (
                         <option key={v}>{v}</option>
@@ -649,74 +467,67 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* NEW AGE SELECTION DROPDOWN & ALLERGEN REGISTRY CARD CONTAINER */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="font-mono text-xs uppercase tracking-wider text-zinc-500 block mb-1">
-                      Attendee Age Profile
-                    </label>
-                    <select
-                      value={form.attendeeAgeGroup}
-                      onChange={(e) => updateField("attendeeAgeGroup", e.target.value)}
-                      className="w-full bg-white border-2 border-zinc-900 p-3 text-sm font-medium focus:outline-none"
-                    >
-                      <option value="primary">Primary (Ages 5-11 // High Waste Index)</option>
-                      <option value="teens">Teens (Ages 12-18 // High Caloric Demand)</option>
-                      <option value="adults">Adults / Staff Members (Baseline Standard)</option>
-                      <option value="mixed">Mixed Community Spread (Blended Family Model)</option>
-                    </select>
-                  </div>
+                <div>
+                  <label className="text-xs font-bold tracking-wide text-zinc-600 block mb-1.5">Target Consumer Demographic</label>
+                  <select
+                    value={form.attendeeAgeGroup}
+                    onChange={(e) => updateField("attendeeAgeGroup", e.target.value)}
+                    className="w-full bg-[#F9F3F0] border-0 rounded-2xl p-3 text-sm font-semibold text-[#103B39] focus:ring-2 focus:ring-[#00615F]"
+                  >
+                    <option value="primary">Primary Students (0.65x baseline scaling)</option>
+                    <option value="teens">Teen Cohort / Athletes (1.35x metabolic boost)</option>
+                    <option value="adults">Adult Staff Standard (1.00x default baseline)</option>
+                    <option value="mixed">Mixed Demographic Group (1.10x model matrix)</option>
+                  </select>
+                </div>
 
-                  <div>
-                    <label className="font-mono text-xs uppercase tracking-wider text-zinc-500 block mb-1">
-                      Containment Content Warning
-                    </label>
-                    <div className="border-2 border-zinc-900 p-2 bg-white flex flex-wrap gap-3 h-[46px] items-center px-3">
-                      {["Nuts", "Dairy", "Gluten"].map((allergen) => {
-                        const isChecked = form.allergenAlerts.includes(allergen);
-                        return (
-                          <label key={allergen} className="flex items-center gap-1.5 font-mono text-xs uppercase font-bold cursor-pointer select-none">
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => {
-                                const nextAllergens = isChecked
-                                  ? form.allergenAlerts.filter((a) => a !== allergen)
-                                  : [...form.allergenAlerts, allergen];
-                                updateField("allergenAlerts", nextAllergens);
-                              }}
-                              className="accent-zinc-900 w-3.5 h-3.5 border-2 border-zinc-900"
-                            />
-                            {allergen}
-                          </label>
-                        );
-                      })}
-                    </div>
+                {/* SAFETY CHECKLIST ALLERGENS */}
+                <div className="bg-[#FAF6F4] rounded-2xl p-4 border border-[#EBE3DE]">
+                  <span className="text-xs font-bold tracking-wide text-zinc-700 block mb-2.5">Allergen Safety Registry</span>
+                  <div className="flex flex-wrap gap-2">
+                    {["Nuts", "Dairy", "Gluten"].map((allergen) => {
+                      const isActive = form.allergenAlerts.includes(allergen);
+                      return (
+                        <button
+                          key={allergen}
+                          type="button"
+                          onClick={() => toggleAllergen(allergen)}
+                          className={`text-xs px-4 py-2 rounded-full font-bold border transition-all ${
+                            isActive 
+                              ? "bg-red-50 border-red-300 text-red-700 shadow-sm" 
+                              : "bg-white border-zinc-200 text-zinc-600 hover:border-zinc-300"
+                          }`}
+                        >
+                          {allergen.toUpperCase()} {isActive ? "⚠️" : ""}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-                
-                <div className="border border-zinc-900 p-4 bg-zinc-50">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="font-mono text-xs uppercase tracking-wider text-zinc-900 font-bold"> CATERING PROVISIONS </span>
-                    <button
-                      onClick={addItem}
-                      className="font-mono text-xs uppercase tracking-wider bg-zinc-900 text-white px-2 py-1 hover:bg-zinc-800"
+
+                {/* PROVISIONS INVENTORY LIST */}
+                <div className="bg-[#FAF6F4] rounded-2xl p-4 border border-[#EBE3DE] space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold tracking-wide text-[#00615F]">Catering Allocation</span>
+                    <button 
+                      onClick={addItem} 
+                      className="text-[11px] font-extrabold text-[#00615F] hover:text-[#004D4A] bg-[#EAF4F2] px-2.5 py-1 rounded-full transition-all"
                     >
-                      + Add Target Item
+                      + Add Menu Item
                     </button>
                   </div>
 
-                  <div className="space-y-4 max-h-[320px] overflow-y-auto pr-1">
+                  <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1">
                     {form.items.map((item, index) => (
-                      <div key={item.id} className="border border-zinc-300 p-3 bg-white space-y-2">
+                      <div key={item.id} className="bg-white rounded-xl p-3 border border-zinc-200 shadow-xs space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-zinc-400">#{index + 1}</span>
+                          <span className="font-mono text-xs text-zinc-400 font-bold">#{index + 1}</span>
                           <input
                             type="text"
                             value={item.name}
                             onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                            placeholder="Item description name"
-                            className="flex-1 bg-white border border-zinc-900 p-1.5 text-xs focus:outline-none"
+                            placeholder="e.g. Sandwich"
+                            className="flex-1 bg-[#F9F3F0] border-0 rounded-xl p-2 text-xs font-semibold focus:ring-1 focus:ring-[#00615F]"
                           />
                           <input
                             type="number"
@@ -724,132 +535,123 @@ export default function App() {
                             value={item.qty}
                             onChange={(e) => updateItem(item.id, "qty", e.target.value)}
                             placeholder="Qty"
-                            className="w-16 bg-white border border-zinc-900 p-1.5 text-xs font-mono focus:outline-none"
+                            className="w-16 bg-[#F9F3F0] border-0 rounded-xl p-2 text-xs font-mono font-bold text-center focus:ring-1 focus:ring-[#00615F]"
                           />
                           {form.items.length > 1 && (
-                            <button
-                              onClick={() => removeItem(item.id)}
-                              className="text-zinc-400 hover:text-zinc-900 font-bold px-1"
+                            <button 
+                              onClick={() => removeItem(item.id)} 
+                              className="text-zinc-400 hover:text-red-600 p-1 font-bold text-sm transition-all"
                             >
                               ✕
                             </button>
                           )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 pt-1 border-t border-dashed border-zinc-200">
-                          <div>
+                        <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-dashed border-zinc-100">
+                          <select
+                            value={item.unitType}
+                            onChange={(e) => updateItem(item.id, "unitType", e.target.value)}
+                            className="bg-[#FAF6F4] border-0 rounded-lg p-1.5 text-[10px] font-bold text-zinc-600 focus:ring-0"
+                          >
+                            {Object.entries(UNIT_TYPES).map(([k, val]) => (
+                              <option key={k} value={k}>{val}</option>
+                            ))}
+                          </select>
+
+                          {item.unitType !== "individual" ? (
                             <select
-                              value={item.unitType}
-                              onChange={(e) => updateItem(item.id, "unitType", e.target.value)}
-                              className="w-full bg-zinc-50 border border-zinc-400 text-[11px] p-1 font-mono focus:outline-none"
+                              value={item.sizeValue}
+                              onChange={(e) => updateItem(item.id, "sizeValue", e.target.value)}
+                              className="bg-[#FAF6F4] border-0 rounded-lg p-1.5 text-[10px] font-bold text-zinc-600 focus:ring-0"
                             >
-                              {Object.entries(UNIT_TYPES).map(([k, val]) => (
-                                <option key={k} value={k}>{val}</option>
+                              {(item.unitType === "volume" ? VOLUME_SIZES : WEIGHT_SIZES).map((sz) => (
+                                <option key={sz.value} value={sz.value}>{sz.label}</option>
                               ))}
                             </select>
-                          </div>
-                          <div>
-                            {item.unitType === "volume" && (
-                              <select
-                                value={item.sizeValue}
-                                onChange={(e) => updateItem(item.id, "sizeValue", e.target.value)}
-                                className="w-full bg-zinc-50 border border-zinc-400 text-[11px] p-1 font-mono focus:outline-none"
-                              >
-                                {VOLUME_SIZES.map((sz) => (
-                                  <option key={sz.value} value={sz.value}>{sz.label}</option>
-                                ))}
-                              </select>
-                            )}
-                            {item.unitType === "weight" && (
-                              <select
-                                value={item.sizeValue}
-                                onChange={(e) => updateItem(item.id, "sizeValue", e.target.value)}
-                                className="w-full bg-zinc-50 border border-zinc-400 text-[11px] p-1 font-mono focus:outline-none"
-                              >
-                                {WEIGHT_SIZES.map((sz) => (
-                                  <option key={sz.value} value={sz.value}>{sz.label}</option>
-                                ))}
-                              </select>
-                            )}
-                            {item.unitType === "individual" && (
-                              <div className="text-[11px] text-zinc-400 font-mono p-1 bg-zinc-50 border border-transparent">
-                                Discrete Piece Standard
-                              </div>
-                            )}
-                          </div>
+                          ) : (
+                            <div className="text-[10px] text-zinc-400 font-medium px-2 py-1 bg-zinc-50 rounded-lg border border-transparent">
+                              Piece Unit Metric
+                            </div>
+                          )}
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {error && (
-                  <div className="p-3 bg-zinc-50 border-l-2 border-zinc-900 font-mono text-xs text-zinc-900">
-                    ⚠️ {error}
-                  </div>
-                )}
+                {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 rounded-xl text-xs font-semibold">⚠️ {error}</div>}
 
                 <button
                   onClick={handleAudit}
                   disabled={loading}
-                  className="w-full bg-zinc-900 hover:bg-zinc-800 disabled:bg-zinc-200 text-white font-bold uppercase tracking-wider py-4 text-xs transition-colors border-2 border-zinc-900"
+                  className="w-full bg-[#E68A73] hover:bg-[#D57962] disabled:bg-zinc-200 text-white font-extrabold rounded-2xl py-3.5 text-xs uppercase tracking-wider transition-all shadow-sm"
                 >
-                  {loading ? "PROCESSING COMPLEX TELEMETRY MATRIX..." : "EXECUTE ECO-AUDIT MATRIX →"}
+                  {loading ? "Calibrating Model Parameters..." : "Run Sustainability Audit →"}
                 </button>
               </div>
             </div>
 
-            
-            <div ref={resultsRef} className="lg:col-span-7 space-y-8">
+            {/* DIAGNOSTIC RESULTS DISPLAY (RIGHT COLUMN) */}
+            <div ref={resultsRef} className="lg:col-span-7 space-y-6">
               {auditResult ? (
-                <div className="space-y-6">
+                <div className="space-y-6 animate-fadeIn">
                   
-                  
-                  <div className="flex flex-wrap items-center justify-between border-b border-zinc-900 pb-2">
-                    <span className="font-mono text-xs uppercase tracking-wider bg-zinc-900 text-white px-2 py-0.5 font-bold">
-                      Diagnostic Frame Matrix: {auditResult.source.toUpperCase()}
-                    </span>
-                    <span className="font-mono text-xs text-zinc-500 uppercase">
-                      Scope: {auditResult.formData.eventType} // {auditResult.formData.attendance} Node Targets
-                    </span>
-                  </div>
-
-                  
-                  <div className="border border-zinc-900 p-6 bg-zinc-50 grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="border-r border-zinc-300 md:pr-4">
-                      <span className="font-mono text-xs uppercase text-zinc-400 block tracking-wider">Estimated Waste Mass</span>
-                      <div className="text-3xl font-black font-mono text-zinc-950 mt-1">
-                        {auditResult.impactMetrics?.foodWasteKg || 0} <span className="text-xs font-sans font-normal text-zinc-500">KG</span>
+                  {/* ALLERGEN ALERTS FIREWALL CONTAINER */}
+                  {auditResult.formData.allergenAlerts.length > 0 && (
+                    <div className="bg-red-50 border border-red-200 rounded-3xl p-5 shadow-sm">
+                      <div className="flex items-center gap-2 text-red-700 font-bold text-xs uppercase tracking-wider mb-1.5">
+                        ⚠️ High-Alert Security Screening Triggered
                       </div>
-                      <span className="text-[10px] text-zinc-400 block font-mono mt-1 uppercase">Physical load footprint</span>
-                    </div>
-
-                
-
-                    <div className="md:pl-4">
-                      <span className="font-mono text-xs uppercase text-zinc-400 block tracking-wider">Nutritional Capacity Loss</span>
-                      <div className="text-3xl font-black font-mono text-zinc-950 mt-1">
-                        {auditResult.impactMetrics?.hungryPeopleFed || 0} <span className="text-xs font-sans font-normal text-zinc-500">MEALS</span>
-                      </div>
-                      <span className="text-[10px] text-zinc-400 block font-mono mt-1 uppercase">Sustained individual cycles</span>
-                    </div>
-                  </div>
-
-                  
-                  {auditResult.anomaliesDetected.length > 0 ? (
-                    <div className="border border-zinc-900 p-5 bg-white">
-                      <h3 className="font-mono text-xs uppercase tracking-wider text-zinc-900 font-bold mb-3 flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-zinc-950"></span>
-                        Detected Supply Inefficiencies
+                      <h3 className="text-sm font-black text-zinc-900 uppercase">
+                        Active Allergen Footprint: {auditResult.formData.allergenAlerts.join(", ")}
                       </h3>
+                      <p className="text-xs text-zinc-600 mt-1 leading-relaxed font-medium">
+                        Redistribution pipelines have been locked to secure locations. High-visibility physical flags are required on all outgoing cargo parcel boxes before hub collection.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* SUSTAINABILITY ECO TELEMETRY MAP */}
+                  <div className="bg-[#00615F] text-white rounded-3xl p-6 shadow-sm space-y-4">
+                    <div className="flex justify-between items-center border-b border-[#004D4B] pb-3">
+                      <span className="text-xs font-mono uppercase tracking-widest text-[#A3D3C9]">Sustainability Footprint Balance</span>
+                      <span className="text-[11px] bg-[#004D4B] text-[#A3D3C9] px-2.5 py-1 rounded-full font-bold">Local Edge Node</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-[#004D4B] rounded-2xl p-4 border border-[#003B39]">
+                        <span className="text-[10px] font-bold text-[#A3D3C9] uppercase tracking-wider block">Estimated Waste Mass</span>
+                        <div className="text-2xl font-black mt-1 font-mono text-white">
+                          {auditResult.impactMetrics?.foodWasteKg || 0} <span className="text-xs font-sans text-[#A3D3C9] font-normal">KG</span>
+                        </div>
+                      </div>
+                      <div className="bg-[#004D4B] rounded-2xl p-4 border border-[#003B39]">
+                        <span className="text-[10px] font-bold text-[#A3D3C9] uppercase tracking-wider block">Lifecycle Water Loss</span>
+                        <div className="text-2xl font-black mt-1 font-mono text-white">
+                          {auditResult.impactMetrics?.waterWasteL || 0} <span className="text-xs font-sans text-[#A3D3C9] font-normal">L</span>
+                        </div>
+                      </div>
+                      <div className="bg-[#004D4B] rounded-2xl p-4 border border-[#003B39]">
+                        <span className="text-[10px] font-bold text-[#A3D3C9] uppercase tracking-wider block">Nutritional Capacity</span>
+                        <div className="text-2xl font-black mt-1 font-mono text-white">
+                          {auditResult.impactMetrics?.hungryPeopleFed || 0} <span className="text-xs font-sans text-[#A3D3C9] font-normal">MEALS</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* DETECTED OVER-ALLOCATION BLOCK */}
+                  {auditResult.anomaliesDetected.length > 0 ? (
+                    <div className="bg-white rounded-3xl p-5 border border-[#EBE3DE] shadow-sm space-y-3">
+                      <h3 className="text-xs font-black uppercase text-[#E68A73] tracking-wider">⚠️ Procurement Anomalies Detected</h3>
                       <div className="space-y-2">
                         {auditResult.anomaliesDetected.map((anom, idx) => (
-                          <div key={idx} className="border-l-2 border-zinc-900 bg-zinc-50 p-3 flex justify-between items-start gap-4">
+                          <div key={idx} className="bg-[#FAF6F4] rounded-2xl p-3 flex justify-between items-start border border-[#EBE3DE] gap-4 text-xs">
                             <div>
-                              <div className="font-mono text-xs font-bold uppercase tracking-tight text-zinc-900">{anom.item}</div>
-                              <p className="text-xs text-zinc-600 mt-1">{anom.reason}</p>
+                              <div className="font-extrabold text-[#103B39] uppercase">{anom.item}</div>
+                              <p className="text-zinc-500 mt-0.5 text-[11px] font-medium leading-relaxed">{anom.reason}</p>
                             </div>
-                            <span className="font-mono text-xs bg-zinc-900 text-white font-bold px-1.5 py-0.5">
+                            <span className="bg-[#E68A73] text-white font-mono font-bold px-2 py-0.5 rounded-lg text-[11px]">
                               +{anom.percentageOver}%
                             </span>
                           </div>
@@ -857,32 +659,29 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="border border-zinc-900 p-4 bg-zinc-50 flex items-center gap-2 text-xs font-mono uppercase text-zinc-700">
-                      <span>✓</span> Telemetry stable. Provisions remain locked within baseline optimization constraints.
+                    <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 text-xs font-semibold">
+                      ✓ Optimization Clear. Order sits within structural baseline limits.
                     </div>
                   )}
 
-                  
-                  {/* CALIBRATED ORDER MATRIX DISPLAY (RECOMMENDATION ENGINE VISIBILITY) */}
-                  <div className="border border-zinc-900 bg-white">
-                    <div className="p-4 border-b border-zinc-900 bg-zinc-50 font-mono text-xs uppercase tracking-wider font-bold text-zinc-900 flex justify-between">
-                      <span>PROVISIONS MODIFICATION MATRIX</span>
-                      <span className="text-zinc-400">ENGINE BASELINES SHOWN</span>
+                  {/* RE-CALIBRATION MATRIX LIST */}
+                  <div className="bg-white rounded-3xl border border-[#EBE3DE] shadow-sm overflow-hidden">
+                    <div className="p-4 bg-[#FAF6F4] border-b border-[#EBE3DE] text-xs uppercase font-extrabold text-[#00615F] flex justify-between">
+                      <span>Provisions Re-Calibration Guide</span>
+                      <span className="text-zinc-400 font-mono font-normal">Target Model Outputs</span>
                     </div>
-                    <div className="divide-y divide-zinc-200">
+                    <div className="divide-y divide-zinc-100">
                       {auditResult.recommendedQuantities.map((rec, idx) => (
                         <div key={idx} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-1.5 h-1.5 ${rec.status === 'high-risk' ? 'bg-zinc-950' : 'bg-zinc-400'}`}></span>
-                            <span className="font-bold text-zinc-900">{rec.item}</span>
-                            <span className="font-mono text-[10px] text-zinc-400">({rec.baselineUsed}/head baseline)</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className={`w-2 h-2 rounded-full ${rec.status === 'high-risk' ? 'bg-[#E68A73]' : 'bg-emerald-600'}`}></span>
+                            <span className="font-extrabold text-[#103B39] uppercase">{rec.item}</span>
+                            <span className="text-[10px] text-zinc-400 font-medium">({rec.baselineUsed}/head target)</span>
                           </div>
-                          <div className="flex items-center justify-between sm:justify-end gap-6 font-mono">
+                          <div className="flex items-center justify-between sm:justify-end gap-4 font-mono text-[11px]">
                             <span className="text-zinc-400 line-through">{rec.plannedQty} Input</span>
-                            <span className="font-bold text-zinc-900 text-sm">{rec.suggestedQty} Suggested</span>
-                            <span className={`uppercase font-bold tracking-tight text-[10px] px-2 py-0.5 ${
-                              rec.status === "high-risk" ? "bg-zinc-950 text-white" : "bg-zinc-100 text-zinc-600"
-                            }`}>
+                            <span className="font-black text-[#00615F] text-sm">{rec.suggestedQty} Target</span>
+                            <span className={`uppercase font-bold text-[10px] px-2 py-0.5 rounded-full ${rec.status === "high-risk" ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-700"}`}>
                               {rec.status}
                             </span>
                           </div>
@@ -891,121 +690,87 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* REGIONAL CHARITY RESOURCE HUB CARD */}
-                  <div className="border border-zinc-900 p-5 bg-zinc-50">
-                    <span className="font-mono text-xs uppercase text-zinc-400 block tracking-wider mb-2">
-                      Hyper-Local Operational Matching Matrix (Qatar Context)
-                    </span>
-                    <h4 className="font-bold text-sm uppercase tracking-tight mb-3">
-                      Ranked Logistics Optimization Channels
-                    </h4>
-                    <div className="space-y-4">
-                      {auditResult.targetSupport.map((support, i) => (
-                        <div key={i} className="bg-white border-2 border-zinc-900 p-4 font-mono text-xs shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                          <div className="flex justify-between items-center border-b border-dashed border-zinc-300 pb-1.5 mb-2">
-                            <div className="font-black text-sm text-zinc-900 uppercase">
-                              #{i + 1} . {support.name}
+                  {/* CHARITY ROUTING TGTG LOOK */}
+                  <div className="bg-white rounded-3xl p-5 border border-[#EBE3DE] shadow-sm space-y-3">
+                    <span className="text-xs font-black uppercase text-[#00615F] tracking-wider block">Qatar Food Recovery Routing Hubs</span>
+                    <div className="space-y-3">
+                      {auditResult.logisticsMatching.map((charity, i) => (
+                        <div key={i} className="bg-[#FAF6F4] border border-[#EBE3DE] rounded-2xl p-4 text-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                          <div className="space-y-1">
+                            <div className="font-extrabold text-[#103B39] uppercase flex items-center gap-2 flex-wrap">
+                              <span>{charity.name}</span>
+                              <span className="text-[10px] bg-white border border-zinc-200 text-zinc-500 px-2 py-0.5 font-normal rounded-full">{charity.desk}</span>
                             </div>
-                            <span className={`px-2 py-0.5 font-bold font-mono text-[10px] uppercase tracking-tight text-white ${
-                              support.matchScore > 75 ? "bg-zinc-900" : "bg-zinc-500"
-                            }`}>
-                              Compatibility: {support.matchScore}%
-                            </span>
+                            <div className="text-[11px] text-zinc-500 font-medium leading-relaxed">{charity.description}</div>
+                            <div className="pt-1 space-y-0.5">
+                              {charity.routingNotes.map((note, idx) => (
+                                <div key={idx} className="text-[10px] text-zinc-500 font-medium font-mono">{note}</div>
+                              ))}
+                            </div>
                           </div>
-                          <div className="text-zinc-600 font-sans text-xs mb-3 leading-relaxed">{support.description}</div>
-                          <div className="grid grid-cols-2 gap-2 text-[10px] text-zinc-500 bg-zinc-50 p-2 border border-zinc-200">
-                            <div>📞 CONTACT: {support.contact}</div>
-                            <div>📍 HUB: {support.desk}</div>
-                          </div>
-                          <div className="mt-2.5 space-y-1 pt-2 border-t border-zinc-100">
-                            {support.routingNotes.map((note, nIdx) => (
-                              <div key={nIdx} className="text-[10px] text-zinc-700 tracking-tight font-sans">
-                                {note}
-                              </div>
-                            ))}
+                          <div className="sm:text-right flex sm:flex-col justify-between w-full sm:w-auto items-center sm:items-end border-t sm:border-t-0 pt-2 sm:pt-0 border-zinc-200">
+                            <div className="text-xl font-black font-mono text-[#00615F]">{charity.matchScore} <span className="text-xs font-normal text-zinc-400">%</span></div>
+                            <div className="text-[11px] font-bold text-zinc-500 font-mono mt-0.5">{charity.contact}</div>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
-                  
-                  <div className="border border-zinc-900 p-5 bg-white">
-                    <h3 className="font-mono text-xs uppercase tracking-wider text-zinc-900 font-bold mb-4 flex items-center gap-2">
-                      ⚡ Local Campus Asset Redistribution Routing Matrix
-                    </h3>
-                    <div className="space-y-3">
+
+                  {/* AUTOMATED REDISTRIBUTION SCRIPT BLOCK */}
+                  <div className="bg-white rounded-3xl p-5 border border-[#EBE3DE] shadow-sm">
+                    <h3 className="text-xs font-black uppercase text-[#00615F] tracking-wider mb-3">⚡ Smart Recovery Action Matrix</h3>
+                    <div className="space-y-2.5">
                       {auditResult.contingencyPlan.map((step, idx) => (
-                        <div key={idx} className="flex gap-3 text-xs items-start">
-                          <span className="font-mono text-[10px] bg-zinc-100 border border-zinc-900 font-bold text-zinc-900 px-1 py-0.5">
+                        <div key={idx} className="flex gap-3 text-xs items-start bg-[#FAF6F4] p-2.5 rounded-xl border border-[#EBE3DE]">
+                          <span className="font-mono text-[10px] bg-[#00615F] font-bold text-white px-1.5 py-0.5 rounded-md">
                             STEP_{idx + 1}
                           </span>
-                          <p className="text-zinc-700 leading-relaxed pt-0.5">{step}</p>
+                          <p className="text-zinc-700 font-medium leading-relaxed pt-0.5">{step}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  
-                  <div className="border border-zinc-900">
-                    <button
-                      onClick={() => setShowThinkingPanel(!showThinkingPanel)}
-                      className="w-full text-left p-3 bg-zinc-900 text-white font-mono text-xs uppercase tracking-wider flex justify-between items-center"
-                    >
-                      <span>📑 System Reasoning Process Trace Layer</span>
-                      <span>{showThinkingPanel ? "[-] Hide Matrix Log" : "[+] Reveal Log Output"}</span>
-                    </button>
-                    {showThinkingPanel && (
-                      <div className="p-4 bg-zinc-50 border-t border-zinc-900 font-mono text-[11px] text-zinc-600 overflow-x-auto max-h-60 leading-relaxed">
-                        <div className="uppercase font-bold text-zinc-900 mb-2">// TELEMETRY PROMPT DUMP ANALYSIS //</div>
-                        <pre className="whitespace-pre-wrap">{auditResult.rawThinking || "Executing local analytical matrix parsing arrays without telemetry dependencies."}</pre>
-                      </div>
-                    )}
-                  </div>
-
-                  
-                  <div className="border border-zinc-900 p-5 bg-zinc-50">
+                  {/* POST EVENT CLOSING RECORD LAYER */}
+                  <div className="bg-white rounded-3xl p-5 border border-[#EBE3DE] shadow-sm space-y-3">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                       <div>
-                        <h4 className="font-bold text-sm uppercase tracking-tight">Post-Event Consumption Register</h4>
-                        <p className="font-mono text-xs text-zinc-500 mt-0.5">Feed active metric telemetry to override synthetic baseline thresholds.</p>
+                        <h4 className="font-extrabold text-sm text-[#00615F] uppercase">Post-Event Verification Log</h4>
+                        <p className="text-xs text-zinc-500 mt-0.5">Input actual consumed pieces to calibrate internal local baselines.</p>
                       </div>
-                      {saved && (
-                        <span className="font-mono text-xs bg-zinc-950 text-white font-bold px-3 py-1">
-                          MEMORIZED IN REGISTER
-                        </span>
-                      )}
+                      {saved && <span className="text-[11px] font-mono bg-[#00615F] text-white font-bold px-3 py-1 rounded-full">MEMORIZED ON DISK</span>}
                     </div>
 
                     {!saved && (
                       <div className="mt-4 space-y-3">
                         {auditResult.formData.items.map((item) => (
-                          <div key={item.name} className="flex items-center justify-between gap-4 border-b border-zinc-200 pb-2">
-                            <span className="text-xs font-medium text-zinc-800">{item.name}</span>
+                          <div key={item.name} className="flex items-center justify-between gap-4 border-b border-zinc-100 pb-2">
+                            <span className="text-xs font-bold text-zinc-700 uppercase">{item.name}</span>
                             <div className="flex items-center gap-3">
-                              <span className="font-mono text-[11px] text-zinc-400">Scheduled: {item.qty}</span>
+                              <span className="text-[10px] text-zinc-400 font-mono">Planned: {item.qty}</span>
                               <input
                                 type="number"
                                 min="0"
-                                max={item.qty} // Set semantic browser input limit
-                                placeholder="Actual pieces/vol"
+                                max={item.qty}
+                                placeholder="Actual eaten"
                                 value={logActuals[item.name] || ""}
                                 onChange={(e) => {
                                   let val = parseInt(e.target.value, 10);
                                   const maxVal = parseInt(item.qty, 10);
-                                  // If input value outstrips the planned quantity limit, snap it backward
                                   if (val > maxVal) val = maxVal;
                                   setLogActuals({ ...logActuals, [item.name]: isNaN(val) ? "" : val });
                                 }}
-                                className="w-28 bg-white border border-zinc-900 p-1 text-xs font-mono focus:outline-none"
+                                className="w-24 bg-[#F9F3F0] border-0 rounded-xl p-1.5 text-xs font-mono font-bold text-center focus:ring-1 focus:ring-[#00615F]"
                               />
                             </div>
                           </div>
                         ))}
-                        <button
-                          onClick={handleSaveActuals}
-                          className="w-full bg-white hover:bg-zinc-900 border-2 border-zinc-900 hover:text-white text-zinc-900 font-mono text-xs uppercase tracking-wider py-2 font-bold transition-all"
+                        <button 
+                          onClick={handleSaveActuals} 
+                          className="w-full bg-[#00615F] hover:bg-[#004D4A] text-white font-bold rounded-xl py-2.5 text-xs uppercase tracking-wide transition-all shadow-xs"
                         >
-                          Commit Verification Metrics to Disk →
+                          Commit Ingestion Data to System Memory →
                         </button>
                       </div>
                     )}
@@ -1013,11 +778,10 @@ export default function App() {
 
                 </div>
               ) : (
-                <div className="border-4 border-dashed border-zinc-300 p-12 text-center flex flex-col items-center justify-center h-full min-h-[400px]">
-                  <span className="font-mono text-xs uppercase text-zinc-400 tracking-widest block mb-2">TELEMETRY PANEL SLEEPING</span>
-                  <p className="text-zinc-500 text-xs max-w-xs uppercase font-mono leading-relaxed">
-                    Awaiting form submission matrix parameters on the left console panel node.
-                  </p>
+                <div className="bg-white rounded-3xl border-2 border-dashed border-[#EBE3DE] p-12 text-center flex flex-col items-center justify-center min-h-[400px]">
+                  <span className="text-3xl mb-2">📊</span>
+                  <span className="text-xs font-black text-[#00615F] uppercase tracking-wider block mb-1">Telemetry Monitor Sleep Mode</span>
+                  <p className="text-zinc-400 text-xs max-w-xs font-medium leading-relaxed">Fill out your target catering metrics inside the left panel configuration boards to kickstart optimization loops.</p>
                 </div>
               )}
             </div>
@@ -1025,49 +789,54 @@ export default function App() {
           </div>
         )}
 
-        
+        {/* HISTORICAL REGISTRY LAYOUT (TAB 2) */}
         {activeTab === "history" && (
-          <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 shadow-sm border border-[#EBE3DE] space-y-6">
             <div>
-              <h2 className="text-2xl font-black uppercase tracking-tight">TELEMETRY REGISTRY DATABASE</h2>
-              <p className="font-mono text-xs text-zinc-500 mt-0.5">
-                Internal storage tracks {eventHistory.length} operational matrices for predictive modeling base calculations.
-              </p>
+              <h2 className="text-xl font-black tracking-tight text-[#00615F] uppercase">System Baselines Database</h2>
+              <p className="text-xs text-zinc-500 mt-0.5">Localized storage footprints representing persistent regional metadata logs.</p>
             </div>
 
             <div className="space-y-4">
-            {[...eventHistory].reverse().map((evt, idx) => (
-              <div key={evt.id || idx} className="border-2 border-zinc-900 p-4 bg-white">
-                
-                {/* THIS ENTIRE CONTAINER BELOW IS WHAT GETS REPLACED */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-200 pb-2 mb-3 gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-sm uppercase tracking-tight">{evt.eventType}</span>
-                    <span className="font-mono text-[10px] bg-zinc-900 text-white font-bold px-1.5 py-0.5 uppercase">
-                      {evt.timeOfDay}
-                    </span>
+              {[...eventHistory].map((evt, idx) => (
+                <div key={evt.id || idx} className="bg-[#FAF6F4] border border-[#EBE3DE] rounded-2xl p-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-zinc-200 pb-2 mb-3 gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-extrabold text-sm uppercase text-[#103B39]">{evt.eventType}</span>
+                      <span className="font-mono text-[10px] bg-[#00615F] text-white font-bold px-2 py-0.5 rounded-full uppercase">{evt.timeOfDay}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-[10px] text-zinc-400">{evt.id || `historical-node-${idx}`}</span>
+                      <button
+                        onClick={() => handleDeleteEvent(evt.id)}
+                        className="font-mono text-[10px] text-red-600 hover:text-red-800 font-bold transition-all"
+                      >
+                        [✕ Purge Log Record]
+                      </button>
+                    </div>
                   </div>
-                  
-                  {/* Here is the new flex container holding the ID and the delete button together */}
-                  <div className="flex items-center gap-4">
-                    <span className="font-mono text-xs text-zinc-400">{evt.id || `historical-node-${idx}`}</span>
-                    <button
-                      onClick={() => handleDeleteEvent(evt.id)}
-                      className="font-mono text-[10px] uppercase text-red-600 hover:bg-zinc-900 hover:text-white border border-red-200 hover:border-zinc-900 px-2 py-0.5 tracking-tight transition-all font-bold"
-                    >
-                      [✕ REMOVE REGISTRY]
-                    </button>
+
+                  {/* UPGRADED HISTORICAL CARD MATRIX */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] font-mono text-zinc-500 mb-3 bg-white p-2.5 rounded-xl border border-zinc-100">
+                    <div>👥 DEMOGRAPHIC BUCKET: <span className="font-bold uppercase text-zinc-800">{evt.attendeeAgeGroup || "adults"}</span></div>
+                    <div>
+                      🛡️ HAZARD FOOTPRINT:{" "}
+                      {evt.allergenAlerts && evt.allergenAlerts.length > 0 ? (
+                        <span className="font-bold text-red-600 uppercase">CONTAINS RESIDUAL ({evt.allergenAlerts.join(", ")})</span>
+                      ) : (
+                        <span className="text-emerald-700 font-bold uppercase">ALLERGEN SECURE</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {evt.items.map((it, i) => (
-                      <div key={i} className="bg-zinc-50 border border-zinc-200 p-2.5 font-mono">
-                        <div className="text-[11px] text-zinc-400 uppercase truncate">{it.name}</div>
-                        <div className="text-sm font-bold text-zinc-900 mt-1">
-                          {it.actual !== undefined ? it.actual : "Unknown"} / <span className="text-zinc-400">{it.planned}</span>
+                      <div key={i} className="bg-white border border-zinc-200 p-2.5 rounded-xl font-mono text-xs">
+                        <div className="text-[10px] text-zinc-400 uppercase truncate font-bold">{it.name}</div>
+                        <div className="text-sm font-black text-[#00615F] mt-0.5">
+                          {it.actual !== undefined ? it.actual : "Unchecked"} / <span className="text-zinc-400 text-xs font-normal">{it.planned}</span>
                         </div>
-                        <div className="text-[10px] text-zinc-500 mt-0.5"> Ratio: {it.perHead ? it.perHead.toFixed(2) : "0.00"}/head</div>
+                        <div className="text-[9px] text-zinc-500 font-medium mt-0.5">Ratio: {it.perHead ? it.perHead.toFixed(2) : "0.00"}/head</div>
                       </div>
                     ))}
                   </div>
@@ -1078,9 +847,8 @@ export default function App() {
         )}
       </main>
 
-      
-      <footer className="border-t border-zinc-900 mt-20 px-6 py-6 text-center font-mono text-xs text-zinc-400 uppercase tracking-tight bg-white">
-        EventWaste Scout // Made for USAII Hackathon // High School Track
+      <footer className="mt-20 border-t border-[#EBE3DE] py-8 text-center font-mono text-[10px] text-zinc-400 uppercase tracking-widest">
+        EventWaste Scout // High School Track Portfolio Submission // Doha, Qatar 2026
       </footer>
     </div>
   );
